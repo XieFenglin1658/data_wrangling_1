@@ -10,7 +10,9 @@ library(tidyverse)
 
  Read in the litters dataset.
 
-## 有两种途径，absolute path 和relative path,absolute path是指从电脑-...-username-school-homework-...这种路径只适用于你的电脑，任何人想复刻都有可能出现问题，而relative path是基于repository的，任何人按步骤来复刻都可以成功，这也是R project的一个优势所在。
+##有两种途径，absolute path 和relative path,absolute path是指从电脑-...-username-school-homework-...这种路径只适用于你的电脑，任何人想复刻都有可能出现问题，而relative path是基于repository的，任何人按步骤来复刻都可以成功，这也是R project的一个优势所在。
+
+##不是直接load含有janitor的package，而是使用下面的方法，因为我们只需要janitor这一个，package里的其他function我们用不上
  
 ```{r}
 litters_df = read.csv("./data/FAS_litters.csv")
@@ -18,5 +20,23 @@ litters_df = janitor::clean_names(litters_df)
 ```
  
 
-## Take a look at the data
+## Take a look at the data 
+
+printing in the console
+
+##数据形式都被转化成了snake case:litter number -> litters_number
+
+```{r}
+litters_df
+```
+
+```{r}
+head(litters_df)
+```
+
+##以下这个方法是有点gimmicky的，更好的方法是在console中输入view(litters_df)
+```{r}
+skimr::skim(litters_df)
+```
+
  

@@ -1,203 +1,49 @@
 ---
-title: "data manipulation"
+title: "tidy_data"
 output: github_document
 ---
 ```{r setup}
 library(tidyverse)
 ```
 
-##tidyverse中function的输入套路就是：要处理的数据+相应动作,且输入data frame,输出一定是data frame.
+## `pivot_longer`
 
-## Load in the FAS litters data
+load the PULSE data
 
 ```{r}
-litters_df = 
-  read_csv("data/FAS_litters.csv", na = c("NA",".",""))
-
-litters_df = 
-  janitor::clean_names(litters_df)
-
-pups_df =
-  read_csv("data/FAS_pups.csv", skip = 3, na = c("NA",".",""))
-
-pups_df =
-  janitor::clean_names(pups_df)
-
+pulse_data =
+  haven::read_sas("data/public_pulse_data.sas7bdat") |> 
+  janitor::clean_names()
 ```
 
-## `select`
-
-choose some columns and not others
-
-##keep someting
-##select specific thing
+wide format to longer format..
+##大家前缀都一样，则为了更方便read data，可以将前缀去掉，使用`names_prefix = `
 
 ```{r}
-select(litters_df, group, litter_number )
-```
-
-##select a range
-```{r}
-select(litters_df, group, gd0_weight:gd_of_birth)
-```
-
-
-##get rid of something
-
-```{r}
-select(litters_df, -litter_number)
-select(litters_df, -(group:gd_of_birth))
-```
-
-##selcet by prefix
-
-```{r}
-select(litters_df,group, starts_with("gd"))
-```
-
-
-## rearrange by selecting 
-##relocate 和 select干一样的事，但用select多一些
-
-```{r}
-select(litters_df, starts_with("gd"), group)
-select(litters_df, litter_number, everything())
-
-relocate(litters_df,litter_number)
-```
-
-
-## Rename by selecting
-##select 和 rename 效果一样，具体差别看以下例子
-
-```{r}
-select(litters_df, GROUP = group, everything())
-
-rename(litters_df, GROUP = group)
-```
-
-what if I only select one variable
-
-用pull function以及下面那个code的结果输出不是data frame,只是vector,不要用这个function。select输出的是data frame,就算你只选了一个variable!
-
-```{r}
-select(litters_df, group)
-
-pull(litters_df,group)
-litters_df$group
-```
-
-##如果我想去save处理过后的data frame,just重新命名它："litters_df = select(litters_df, GROUP = group, everything())"
-
-LA code
-
-```{r}
-select(pups_df, litter_number, sex, pd_ears)
-```
-
-## `filter`
-
-using `filter` to filter out rows.
-##"=="--R来判断true or false
-
-```{r}
-filter(litters_df, gd_of_birth == 20, pups_born_alive == 6)
-```
-
-look for more than five pups alive
-
-```{r}
-filter(litters_df, pups_born_alive > 5)
-filter(litters_df, pups_born_alive >= 5)
-filter(litters_df, pups_born_alive <= 5)
-
-```
-
-
-look for non-match(不等于)
-
-```{r}
-filter(litters_df, pups_born_alive != 6)
-```
-
-
-match to a set(只留下了control 7和control 8这两个sets)
-
-```{r}
-filter(litters_df, group %in% c("Con7", "Con8"))
-```
-
-
-filter out missing rows with `drop_na()`(经常会做的一步)
-##若什么都不加，如第一个code，则drop_na会把所有missing value全部清理出去，若加上处理对象（第二条code)则只会处理该对象的missing value.
-
-```{r}
-drop_na(litters_df)
-drop_na(litters_df, gd18_weight)
-```
-
-LA code
-
-```{r}
-filter(pups_df, sex == 1)
-filter(pups_df, pd_walk < 11, sex == 2)
-```
-
-
-##`mutate`
-
-use `mutate` to create or modify variables
-str_to_lower is a function to lower the case of string variable
-
-```{r}
-mutate(
-  litters_df,
-  wt_gain = gd18_weight - gd0_weight,
-  group = str_to_lower(group)
-)
-```
-
-## `arrange`
-
-`arrange()`arranges things
-##第一条，把pups_born_alive按正序排列，若想按倒序则加入desc
-##第二条，先把group按正序排列，再把group中的pups_born_alive按正序排列，like,con7中的pups_born_alive按正序，接着就是con8，pups_born_alive重新开始按正序排列
-
-```{r}
-arrange(litters_df, pups_born_alive)
-arrange(litters_df, group, pups_born_alive)
-
-arrange(litters_df, desc(pups_born_alive))
-```
-
-
-## PIPES
-
-uses pips to avoid complex expression (ctrl+shift+m)
-
-##处理的主体会自动承接上一步处理完的主体，所以之后的function都不需要输入处理的主体，只需要输入需要的操作
-
-```{r}
-litters_df = 
-  read_csv("data/FAS_litters.csv", na = c("NA", ".", "")) |> 
-  janitor::clean_names() |> 
-  select(group, litter_number, starts_with("gd")) |> 
-  drop_na() |> 
-  mutate(
-    wt_gain = gd18_weight - gd0_weight
+pulse_data_tidy =
+  pulse_data |>
+  pivot_longer(
+    bdi_score_bl:bdi_score_12m,
+    names_to = "visit",
+    names_prefix = "bdi_score_",
+    values_to = "bdi"
   )
 ```
 
-
-LA: import and tidy the pups data in a piped chain of command
-
+rewrite, combine, and extend(to add a mutate)
 ```{r}
-pups_df = 
-  read_csv("data/FAS_pups.csv", skip= 3, na = c("NA", ".", "")) |> 
-  janitor::clean_names() |> 
-  filter(sex == 1) |> 
-  select(-pd_ears) |> 
-  mutate(pd_pivot_ge7 = pd_pivot >= 7)
+pulse_data =
+  haven::read_sas("data/public_pulse_data.sas7bdat") |> 
+  janitor::clean_names() |>
+  pivot_longer(
+    bdi_score_bl:bdi_score_12m,
+    names_to = "visit",
+    names_prefix = "bdi_score_",
+    values_to = "bdi"
+  ) |>
+  relocate(id, visit) |> 
+  mutate(visit = recode(visit, "bl" = "00m"))
   
 ```
 
+sooory,that's pivot longer, not pivot wider! just need to change the commit!

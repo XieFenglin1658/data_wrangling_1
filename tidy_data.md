@@ -26,7 +26,9 @@ pulse_data =
   janitor::clean_names()
 ```
 
-wide format to longer format.. \##大家前缀都一样，则为了更方便read
+wide format to longer format.. \##I think: 让数据easy to manipulate
+
+\##大家前缀都一样，则为了更方便read
 data，可以将前缀去掉，使用`names_prefix =`
 
 ``` r
@@ -56,5 +58,32 @@ pulse_data =
   mutate(visit = recode(visit, "bl" = "00m"))
 ```
 
-sooory,that’s pivot longer, not pivot wider! just need to change the
+sorry,that’s pivot longer, not pivot wider! just need to change the
 commit!
+
+## `pivot_wider`
+
+\##I think : 让数据easy to read
+
+make up some data
+
+``` r
+analysis_result =
+  tibble(
+    group = c("treatment", "treatment", "placebo", "placebo"),
+    time = c("pre", "post","pre", "post"),
+    mean = c(4, 8, 3.5, 4)
+  )
+
+analysis_result |> 
+  pivot_wider(
+    names_from = "time",
+    values_from = "mean"
+  )
+```
+
+    ## # A tibble: 2 × 3
+    ##   group       pre  post
+    ##   <chr>     <dbl> <dbl>
+    ## 1 treatment   4       8
+    ## 2 placebo     3.5     4

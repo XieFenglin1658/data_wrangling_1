@@ -16,6 +16,11 @@ library(tidyverse)
     ## ✖ dplyr::lag()    masks stats::lag()
     ## ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
 
+``` r
+library(readxl)
+library(haven)
+```
+
 ## `pivot_longer`
 
 load the PULSE data
@@ -26,7 +31,8 @@ pulse_data =
   janitor::clean_names()
 ```
 
-wide format to longer format.. \##I think: 让数据easy to manipulate
+wide format to longer format.. \##I think: 让数据easy to manipulate,more
+tidy
 
 \##大家前缀都一样，则为了更方便read
 data，可以将前缀去掉，使用`names_prefix =`
@@ -35,7 +41,7 @@ data，可以将前缀去掉，使用`names_prefix =`
 pulse_data_tidy =
   pulse_data |>
   pivot_longer(
-    bdi_score_bl:bdi_score_12m,
+    col = bdi_score_bl:bdi_score_12m,
     names_to = "visit",
     names_prefix = "bdi_score_",
     values_to = "bdi"
@@ -49,7 +55,7 @@ pulse_data =
   haven::read_sas("data/public_pulse_data.sas7bdat") |> 
   janitor::clean_names() |>
   pivot_longer(
-    bdi_score_bl:bdi_score_12m,
+    col = bdi_score_bl:bdi_score_12m,
     names_to = "visit",
     names_prefix = "bdi_score_",
     values_to = "bdi"
@@ -58,19 +64,42 @@ pulse_data =
   mutate(visit = recode(visit, "bl" = "00m"))
 ```
 
-sorry,that’s pivot longer, not pivot wider! just need to change the
+sorry,that’s pivot_longer, not pivot_wider! just need to change the
 commit!
+
+Do one more example
+\##这里的gd_time只有两个，tidy的优势不明显，但是若有很多个，pivot_longer的优势就更明显了
+
+``` r
+litters_df =
+  read_csv("data/FAS_litters.csv", na = c("NA", ".", "")) |> 
+  janitor::clean_names() |> 
+  pivot_longer(
+    cols = gd0_weight:gd18_weight,
+    names_to = "gd_time",
+    values_to = "weight"
+  ) |> 
+  mutate(gd_time = case_match(gd_time, "gd0_weight" ~ 0, "gd18_weight" ~ 18))
+```
+
+    ## Rows: 49 Columns: 8
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr (2): Group, Litter Number
+    ## dbl (6): GD0 weight, GD18 weight, GD of Birth, Pups born alive, Pups dead @ ...
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 ## `pivot_wider`
 
-\##I think : 让数据easy to read
-
-make up some data
+\##I think : 让数据easy to read，readability.
+\##kable生成一个table，在knit之后 make up some data
 
 ``` r
 analysis_result =
   tibble(
-    group = c("treatment", "treatment", "placebo", "placebo"),
+    group = c("treatment", "treatment", "control", "control"),
     time = c("pre", "post","pre", "post"),
     mean = c(4, 8, 3.5, 4)
   )
@@ -79,11 +108,101 @@ analysis_result |>
   pivot_wider(
     names_from = "time",
     values_from = "mean"
+  ) |> 
+  knitr::kable()
+```
+
+| group     | pre | post |
+|:----------|----:|-----:|
+| treatment | 4.0 |    8 |
+| control   | 3.5 |    4 |
+
+## Bind tables
+
+``` r
+fellowship_ring =
+  read_excel("data/LotR_Words.xlsx", range ="B3:D6") |> 
+  mutate(movie = "fellowship_ting")
+
+two_towers =
+  read_excel("data/LotR_Words.xlsx", range ="F3:H6") |> 
+  mutate(movie = "two_towers")
+
+return_king =
+  read_excel("data/LotR_Words.xlsx", range ="J3:L6") |> 
+  mutate(movie = "return_king")
+
+lotr_df =
+  bind_rows(fellowship_ring, two_towers, return_king) |>
+  janitor::clean_names() |> 
+  pivot_longer(
+    cols = female:male,
+    names_to = "sex",
+    values_to = "words"
+  ) |> 
+  relocate(movie) |> 
+  mutate(race = str_to_lower(race))
+```
+
+\##要把所有在同一种类的variable combine成一个variable才算tidy enough吗
+\##似乎不是，gd0_weight和gd18_weight这两个variable不仅包括了weight还包括了time
+(0和18)，所以需要pivot_longer,其余的bdi_score/male
+female也是一样，都是因为one variable contain more than one information
+which is not tidy enough, technically.
+
+\##下面重听
+
+## Join FAS datasets
+
+import `litters`datasets
+
+``` r
+litters_df =
+  read_csv("data/FAS_litters.csv", na = c("NA", ".", "")) |> 
+  janitor::clean_names() |> 
+  mutate(wt_gain = gd18_weight - gd0_weight) |> 
+  separate(
+    group, into = c("dose", "day_of_treatment"), sep = 3
   )
 ```
 
-    ## # A tibble: 2 × 3
-    ##   group       pre  post
-    ##   <chr>     <dbl> <dbl>
-    ## 1 treatment   4       8
-    ## 2 placebo     3.5     4
+    ## Rows: 49 Columns: 8
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr (2): Group, Litter Number
+    ## dbl (6): GD0 weight, GD18 weight, GD of Birth, Pups born alive, Pups dead @ ...
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+Import `pup`datasets
+
+``` r
+pups_df =
+  read_csv("data/FAS_pups.csv", skip = 3, na = c("NA", ".", "")) |> 
+  janitor::clean_names() |> 
+  mutate(
+    sex = case_match(
+      sex,
+      1 ~ "male",
+      2 ~ "female"
+    )
+  )
+```
+
+    ## Rows: 313 Columns: 6
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr (1): Litter Number
+    ## dbl (5): Sex, PD ears, PD eyes, PD pivot, PD walk
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+join the datasets!
+
+``` r
+fas_df =
+  left_join(pups_df, litters_df, by = "litter_number") |> 
+  relocate(litter_number, dose, day_of_treatment)
+```

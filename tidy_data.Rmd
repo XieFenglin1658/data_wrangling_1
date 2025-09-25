@@ -125,6 +125,9 @@ lotr_df =
 
 import `litters`datasets
 
+##group这个variable中包含variable level(con\mod\low)和group number(7&8)两个信息，为了让数据更tidy，we need to `seperate` it into two variables. 
+##`sep = 3`-- how to split the variable--代表在第三个字符处分开group这个variable（string),若该string is not clean,则需要先做其他操作,如`case_match`，不然无法使用`sep`
+
 ```{r}
 litters_df =
   read_csv("data/FAS_litters.csv", na = c("NA", ".", "")) |> 
@@ -134,7 +137,6 @@ litters_df =
     group, into = c("dose", "day_of_treatment"), sep = 3
   )
 ```
-
 
 Import `pup`datasets
 
@@ -152,6 +154,11 @@ pups_df =
 ```
 
 join the datasets!
+##不要让R帮你决定join_by什么，最好是自己写下来`by = `，方便以后自己查看，别人查看代码也方便
+
+##若不确定data是啥样的，可以先用`full_join`
+
+##left_join是如何工作的,pup中没有dose这个variable，但是fas_df中有关dose的数据又多于litters中的，这是怎么回事？
 
 ```{r}
 fas_df =
